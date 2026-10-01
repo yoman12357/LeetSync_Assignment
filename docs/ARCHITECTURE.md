@@ -1,0 +1,137 @@
+# Architecture
+
+## Components
+
+```mermaid
+flowchart LR
+    U[User] --> P[Extension popup]
+    P <-->|typed runtime messages| W[Background service worker]
+    L[LeetCode page] -->|fetch and XHR events| B[Main-world page bridge]
+    B -->|window messages without credentials| C[Isolated content script]
+    C <-->|submission request and result| W
+    W <--> S[Chrome local and session storage]
+    W <-->|OAuth code exchange| O[OAuth service]
+    O <-->|authorization code and token| A[GitHub OAuth]
+    W <-->|REST requests| G[GitHub API]
+```
+
+The main-world bridge can observe LeetCode's own network calls but has no extension privileges. The isolated content script can use Chrome APIs but never receives the GitHub token. The service worker is the only extension component that authenticates or writes to GitHub.
+
+## GitHub authentication flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Popup
+    participant Worker as Service worker
+    participant Session as Chrome session storage
+    participant Identity as chrome.identity
+    participant OAuth as OAuth service
+    participant GitHub as GitHub OAuth
+
+    User->>Popup: Select Connect GitHub
+    Popup->>Worker: AUTH_START plus requestId
+    Worker->>OAuth: GET /api/config plus X-Request-Id
+    OAuth-->>Worker: clientId plus requestId
+    Worker->>Worker: Generate state, verifier, and S256 challenge
+    Worker->>Session: Save pending state with expiry
+    Worker->>Identity: launchWebAuthFlow
+    Identity->>GitHub: Authorization request
+    GitHub-->>Identity: code plus state
+    Identity-->>Worker: Callback URL
+    Worker->>Session: Read and remove pending state
+    Worker->>Worker: Validate state and expiry
+    Worker->>OAuth: POST /api/github/token with code, verifier, redirect URI, requestId
+    OAuth->>GitHub: Exchange code using server-side client secret
+    GitHub-->>OAuth: Access token
+    OAuth-->>Worker: Token and requestId
+    Worker->>GitHub: GET /user
+    GitHub-->>Worker: User identity
+    Worker-->>Popup: Authenticated user and requestId
+```
+
+## Accepted-submission flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Page as LeetCode page
+    participant Bridge as Main-world bridge
+    participant Content as Content script
+    participant Worker as Service worker
+    participant Storage as Chrome storage
+    participant GitHub as GitHub API
+
+    User->>Page: Submit code
+    Bridge->>Bridge: Capture typed_code and lang from submit request
+    Page-->>Bridge: Accepted check response
+    Bridge->>Content: SUBMISSION_ACCEPTED window message
+    Content->>Content: Combine network data and DOM metadata
+    Content->>Worker: SUBMISSION_ACCEPTED with requestId
+    Worker->>Worker: Validate sender and payload
+    Worker->>Storage: Read token, repository, settings, history
+    Worker->>GitHub: GET destination file
+    alt Existing content is identical
+        Worker->>Storage: Record fingerprint and skipped history
+        Worker-->>Content: SKIPPED_DUPLICATE with requestId
+    else New or changed content
+        Worker->>GitHub: PUT solution with current SHA when updating
+        alt GitHub reports stale SHA
+            Worker->>GitHub: GET current file
+            Worker->>GitHub: PUT once with refreshed SHA
+        end
+        opt README enabled
+            Worker->>GitHub: GET and conditionally PUT problem README
+        end
+        Worker->>Storage: Record fingerprint and successful history
+        Worker-->>Content: SYNC_SUCCESS with requestId
+    end
+    Content-->>User: Result notification with requestId
+```
+
+## OAuth HTTP routes
+
+| Method | Route | Input | Output |
+|---|---|---|---|
+| `GET` | `/health` | Optional `X-Request-Id` | Health and configured state |
+| `GET` | `/api/config` | Allowed extension `Origin` | Public GitHub OAuth Client ID |
+| `POST` | `/api/github/token` | Code, PKCE verifier, redirect URI | Access token or classified error |
+| `OPTIONS` | OAuth routes | CORS preflight | Allowed origin and headers |
+
+Each response includes `X-Request-Id`. Each completed request produces a JSON log containing request ID, method, path, status, outcome, and duration.
+
+## Internal message contract
+
+```json
+{
+  "type": "SUBMISSION_ACCEPTED",
+  "requestId": "20c1ff07-40f0-46ad-992d-9fdd70ef5849",
+  "payload": {
+    "problemSlug": "two-sum",
+    "problemId": "1",
+    "title": "Two Sum",
+    "language": "cpp",
+    "code": "class Solution { ... }",
+    "url": "https://leetcode.com/problems/two-sum/"
+  }
+}
+```
+
+The response preserves `requestId` and contains `success`, an outcome `type`, and either a result message or an error.
+
+## Correctness model
+
+1. Per-problem in-memory queues prevent overlapping work during one service-worker lifetime.
+2. GitHub is read before each write, making current repository content authoritative.
+3. Identical normalized content returns a successful no-op.
+4. Updates include GitHub's current content SHA.
+5. One conflict causes one refresh and one retry; further conflicts are reported.
+6. Local fingerprints and bounded history are observability aids, not the authoritative duplicate decision.
+
+## Security boundaries
+
+- OAuth client secret: OAuth service environment only.
+- GitHub token: background worker and extension storage only.
+- LeetCode page bridge: submission data only, no Chrome APIs or credentials.
+- Content script: page metadata and runtime messaging, no token access.
+- OAuth origin allowlist: configured Chrome extension IDs only.

@@ -1,0 +1,32 @@
+{
+  "name": "leetsync",
+  "version": "1.0.0",
+  "description": "Chrome extension that syncs accepted LeetCode submissions to GitHub",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.js",
+    "clean": "node scripts/clean.js",
+    "lint": "eslint src server scripts tests --ext .js",
+    "package": "node scripts/package.js",
+    "server": "node server/oauth-server.js",
+    "test": "node --test --test-concurrency=1 tests/*.test.js",
+    "test:coverage": "node --test --experimental-test-coverage --test-concurrency=1 tests/*.test.js",
+    "validate": "node scripts/validate-project.js",
+    "verify": "npm run lint && npm test && npm run build && npm run validate"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "eslint": "^8.57.1"
+  },
+  "keywords": [
+    "leetcode",
+    "github",
+    "chrome-extension",
+    "oauth"
+  ],
+  "license": "MIT"
+}

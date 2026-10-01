@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LeetSync</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32"><path d="M9 17l4 4 10-11"/></svg>
+      </div>
+      <div class="brand-copy">
+        <h1>LeetSync</h1>
+        <p>LeetCode to GitHub</p>
+      </div>
+      <span class="connection" id="connectionState">Offline</span>
+    </header>
+    <p class="notice" id="notice" role="status"></p>
+
+    <section class="panel auth-panel" id="authPanel">
+      <span class="eyebrow">GitHub connection</span>
+      <h2>Keep solved problems in your repository.</h2>
+      <p class="muted">Start the local OAuth service, configure this callback URL in your GitHub OAuth App, then connect.</p>
+      <label class="field-label" for="redirectUri">OAuth callback URL</label>
+      <div class="copy-row">
+        <input id="redirectUri" class="input" type="text" readonly>
+        <button id="copyRedirect" class="button button-secondary" type="button">Copy</button>
+      </div>
+      <button id="connectButton" class="button button-primary button-full" type="button">Connect GitHub</button>
+    </section>
+
+    <section id="dashboard" class="dashboard hidden">
+      <article class="profile panel">
+        <img id="avatar" class="avatar" alt="GitHub profile">
+        <div>
+          <strong id="displayName"></strong>
+          <span id="loginName" class="muted"></span>
+        </div>
+        <button id="logoutButton" class="text-button" type="button">Disconnect</button>
+      </article>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Destination</span>
+            <h2>Repository</h2>
+          </div>
+          <button id="changeRepository" class="text-button hidden" type="button">Change</button>
+        </div>
+        <div id="selectedRepository" class="repository-selected hidden"></div>
+        <div id="repositoryPicker">
+          <label class="field-label" for="repositorySelect">Writable repositories</label>
+          <select id="repositorySelect" class="input">
+            <option value="">Loading repositories...</option>
+          </select>
+          <button id="selectRepository" class="button button-primary button-full" type="button" disabled>Select repository</button>
+          <button id="showCreateForm" class="text-button create-link" type="button">Create a repository</button>
+        </div>
+        <form id="createForm" class="create-form hidden">
+          <label class="field-label" for="repositoryName">Repository name</label>
+          <input id="repositoryName" class="input" maxlength="100" placeholder="leetcode-solutions" required>
+          <label class="check-row"><input id="privateRepository" type="checkbox"> Private repository</label>
+          <div class="button-row">
+            <button id="cancelCreate" class="button button-secondary" type="button">Cancel</button>
+            <button class="button button-primary" type="submit">Create</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Behaviour</span>
+            <h2>Settings</h2>
+          </div>
+        </div>
+        <label class="toggle-row"><span>Automatic synchronization</span><input id="autoSync" type="checkbox"></label>
+        <label class="toggle-row"><span>Generate problem README</span><input id="generateReadme" type="checkbox"></label>
+        <label class="toggle-row"><span>Include performance header</span><input id="includePerformance" type="checkbox"></label>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Activity</span>
+            <h2>Recent synchronizations</h2>
+          </div>
+        </div>
+        <ol id="history" class="history"></ol>
+      </section>
+    </section>
+
+    <div id="loading" class="loading hidden" aria-live="polite">
+      <span class="spinner"></span>
+      <span id="loadingText">Working...</span>
+    </div>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>
