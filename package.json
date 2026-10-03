@@ -10,7 +10,7 @@
   "scripts": {
     "build": "node scripts/build.js",
     "clean": "node scripts/clean.js",
-    "lint": "eslint src server scripts tests --ext .js",
+    "lint": "eslint api src server scripts tests --ext .js",
     "package": "node scripts/package.js",
     "server": "node server/oauth-server.js",
     "test": "node --test --test-concurrency=1 tests/*.test.js",

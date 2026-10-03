@@ -6,6 +6,10 @@ const BODY_LIMIT = 16 * 1024;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{8,100}$/;
 
 export function createOauthServer(options = {}) {
+  return http.createServer(createOauthHandler(options));
+}
+
+export function createOauthHandler(options = {}) {
   const config = {
     clientId: options.clientId ?? process.env.GITHUB_CLIENT_ID ?? '',
     clientSecret: options.clientSecret ?? process.env.GITHUB_CLIENT_SECRET ?? '',
@@ -14,7 +18,7 @@ export function createOauthServer(options = {}) {
     logger: options.logger ?? console,
   };
 
-  return http.createServer(async (request, response) => {
+  return async (request, response) => {
     const startedAt = performance.now();
     const requestId = validRequestId(request.headers['x-request-id']) ? request.headers['x-request-id'] : crypto.randomUUID();
     let status = 500;
@@ -37,13 +41,15 @@ export function createOauthServer(options = {}) {
         return;
       }
 
-      if (request.method === 'GET' && request.url === '/health') {
+      const pathname = new URL(request.url, 'http://localhost').pathname;
+
+      if (request.method === 'GET' && ['/health', '/api/health'].includes(pathname)) {
         status = 200;
         outcome = 'HEALTHY';
         return send(response, status, { status: 'ok', configured: Boolean(config.clientId && config.clientSecret && config.allowedExtensionIds.length), requestId }, cors);
       }
 
-      if (request.method === 'GET' && request.url === '/api/config') {
+      if (request.method === 'GET' && pathname === '/api/config') {
         if (!cors) {
           status = 403;
           outcome = 'ORIGIN_REJECTED';
@@ -59,7 +65,7 @@ export function createOauthServer(options = {}) {
         return send(response, status, { clientId: config.clientId, requestId }, cors);
       }
 
-      if (request.method === 'POST' && request.url === '/api/github/token') {
+      if (request.method === 'POST' && pathname === '/api/github/token') {
         if (!cors) {
           status = 403;
           outcome = 'ORIGIN_REJECTED';
@@ -112,7 +118,7 @@ export function createOauthServer(options = {}) {
         durationMs: Math.round(performance.now() - startedAt),
       }));
     }
-  });
+  };
 }
 
 function validateExchangeRequest(body, allowedIds) {

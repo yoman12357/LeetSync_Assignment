@@ -11,6 +11,8 @@ The implementation includes GitHub OAuth, repository selection and creation, Lee
 - A GitHub account
 - A GitHub OAuth App
 
+For the complete hosted setup and submission checklist, follow [Deployment and credentials](docs/DEPLOYMENT.md).
+
 ## Local setup
 
 ### 1. Install and build
@@ -22,12 +24,14 @@ npm run build
 
 Open `chrome://extensions`, enable Developer mode, select Load unpacked, and choose the generated `dist` directory.
 
+The committed public manifest key keeps the development extension ID stable as `gfajaonbokecoaehhioghldkimgdfdfe`, including when a reviewer loads `dist` from another directory.
+
 ### 2. Register the OAuth App
 
-Open the LeetSync popup and copy the displayed callback URL. It has this form:
+Open the LeetSync popup and copy the displayed callback URL:
 
 ```text
-https://<extension-id>.chromiumapp.org/
+https://gfajaonbokecoaehhioghldkimgdfdfe.chromiumapp.org/
 ```
 
 Create a GitHub OAuth App in GitHub Developer Settings and use that exact value as its Authorization callback URL. Copy the Client ID and Client Secret.
@@ -39,7 +43,7 @@ Copy `.env.example` to `.env` and set:
 ```dotenv
 GITHUB_CLIENT_ID=your_client_id
 GITHUB_CLIENT_SECRET=your_client_secret
-ALLOWED_EXTENSION_IDS=the_extension_id_from_chrome
+ALLOWED_EXTENSION_IDS=gfajaonbokecoaehhioghldkimgdfdfe
 PORT=3000
 ```
 
@@ -120,6 +124,7 @@ Example service log:
 - [Architecture and request flows](docs/ARCHITECTURE.md)
 - [File-by-file guide](docs/FILE_GUIDE.md)
 - [Testing and manual verification](docs/TESTING.md)
+- [Deployment and credentials](docs/DEPLOYMENT.md)
 - [Project requirements](docs/PROJECT_SPECIFICATION.md)
 
 ## Known boundaries

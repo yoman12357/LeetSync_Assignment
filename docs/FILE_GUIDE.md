@@ -31,8 +31,8 @@ This guide states what enters and leaves every maintained project file. Generate
 ### `manifest.json`
 
 - Input: read by `scripts/build.js`, then by Chrome from `dist`.
-- Output: permissions, host permissions, background entry, page scripts, popup, and icon declarations.
-- Responsibility: defines the Manifest V3 extension boundary. It references generated bundle names rather than source paths.
+- Output: stable extension ID, permissions, host permissions, background entry, page scripts, popup, and icon declarations.
+- Responsibility: defines the Manifest V3 extension boundary. Its public key keeps the development ID stable for OAuth; it references generated bundle names rather than source paths.
 
 ### `package.json`
 
@@ -156,7 +156,25 @@ This guide states what enters and leaves every maintained project file. Generate
 
 - Input: environment configuration and HTTP requests for health, public OAuth config, CORS preflight, and code exchange.
 - Output: JSON responses with `X-Request-Id`, GitHub token exchange requests, and structured completion logs.
-- Responsibility: protects the client secret, restricts extension origins and redirect URIs, validates body size and fields, and exchanges authorization codes with GitHub.
+- Responsibility: protects the client secret, restricts extension origins and redirect URIs, validates body size and fields, and exchanges authorization codes with GitHub. It exports both a reusable request handler and a local HTTP server wrapper.
+
+### `api/health.js`
+
+- Input: Vercel request for `/api/health` and server environment variables.
+- Output: configuration health JSON and request trace.
+- Responsibility: exposes the shared OAuth handler as a Vercel function.
+
+### `api/config.js`
+
+- Input: allowed extension request for `/api/config`.
+- Output: public GitHub OAuth client ID.
+- Responsibility: provides the extension-safe portion of OAuth configuration through Vercel.
+
+### `api/github/token.js`
+
+- Input: allowed extension origin, authorization code, PKCE verifier, and redirect URI.
+- Output: GitHub access token response or a classified error.
+- Responsibility: exposes the secret-bearing token exchange through a Vercel function.
 
 ## Build and maintenance scripts
 
@@ -237,6 +255,12 @@ This guide states what enters and leaves every maintained project file. Generate
 
 - Input: the maintained repository inventory.
 - Output: this input, output, and responsibility map.
+
+### `docs/DEPLOYMENT.md`
+
+- Input: fixed extension ID, Vercel route layout, and GitHub OAuth requirements.
+- Output: credential creation, deployment, packaging, live-test, and submission instructions.
+- Responsibility: provides a reproducible handoff without exposing secrets.
 
 ## Assets
 

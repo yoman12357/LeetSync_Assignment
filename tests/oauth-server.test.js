@@ -27,6 +27,10 @@ test('OAuth routes enforce origin, validate input, and trace successful exchange
   assert.equal(health.status, 200);
   assert.equal((await health.json()).configured, true);
 
+  const deployedHealth = await fetch(`${baseUrl}/api/health`, { headers: { 'X-Request-Id': 'request-health-2' } });
+  assert.equal(deployedHealth.status, 200);
+  assert.equal((await deployedHealth.json()).configured, true);
+
   const preflight = await fetch(`${baseUrl}/api/github/token`, {
     method: 'OPTIONS',
     headers: { Origin: origin, 'Access-Control-Request-Method': 'POST' },

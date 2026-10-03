@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -8,6 +9,13 @@ const manifestPath = path.join(dist, 'manifest.json');
 assert.ok(fs.existsSync(manifestPath), 'Run npm run build before validation.');
 
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+const extensionId = [...crypto.createHash('sha256')
+  .update(Buffer.from(manifest.key, 'base64'))
+  .digest('hex')
+  .slice(0, 32)]
+  .map((digit) => String.fromCharCode(97 + Number.parseInt(digit, 16)))
+  .join('');
+assert.equal(extensionId, 'gfajaonbokecoaehhioghldkimgdfdfe', 'Manifest key produced an unexpected extension ID.');
 const referenced = [
   manifest.background.service_worker,
   manifest.action.default_popup,

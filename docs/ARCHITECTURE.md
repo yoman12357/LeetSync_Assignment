@@ -10,12 +10,12 @@ flowchart LR
     B -->|window messages without credentials| C[Isolated content script]
     C <-->|submission request and result| W
     W <--> S[Chrome local and session storage]
-    W <-->|OAuth code exchange| O[OAuth service]
+    W <-->|OAuth code exchange| O[Vercel OAuth functions]
     O <-->|authorization code and token| A[GitHub OAuth]
     W <-->|REST requests| G[GitHub API]
 ```
 
-The main-world bridge can observe LeetCode's own network calls but has no extension privileges. The isolated content script can use Chrome APIs but never receives the GitHub token. The service worker is the only extension component that authenticates or writes to GitHub.
+The main-world bridge can observe LeetCode's own network calls but has no extension privileges. The isolated content script can use Chrome APIs but never receives the GitHub token. The service worker is the only extension component that authenticates or writes to GitHub. The same OAuth handler runs behind three Vercel function entries and the local Node server.
 
 ## GitHub authentication flow
 
@@ -93,7 +93,7 @@ sequenceDiagram
 
 | Method | Route | Input | Output |
 |---|---|---|---|
-| `GET` | `/health` | Optional `X-Request-Id` | Health and configured state |
+| `GET` | `/health` locally or `/api/health` on Vercel | Optional `X-Request-Id` | Health and configured state |
 | `GET` | `/api/config` | Allowed extension `Origin` | Public GitHub OAuth Client ID |
 | `POST` | `/api/github/token` | Code, PKCE verifier, redirect URI | Access token or classified error |
 | `OPTIONS` | OAuth routes | CORS preflight | Allowed origin and headers |

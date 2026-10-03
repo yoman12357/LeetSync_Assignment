@@ -39,6 +39,8 @@ This performs:
 9. Revoke the OAuth token in GitHub settings and submit again; verify the popup returns to disconnected state.
 10. Trigger repeated DOM mutations around an Accepted result and verify the repository is not spammed.
 
+For the hosted acceptance path, follow [DEPLOYMENT.md](DEPLOYMENT.md) and verify `/api/health` before loading the production build.
+
 ## Debugging a failed manual case
 
 Use the request ID displayed in the LeetCode notification or popup history:
