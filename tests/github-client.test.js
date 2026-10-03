@@ -2,6 +2,17 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { GitHubApiError, GitHubClient } from '../src/github/github-client.js';
 
+test('default fetch keeps the browser global as its receiver', async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+  globalThis.fetch = async function browserFetch() {
+    if (this !== globalThis) throw new TypeError('Illegal invocation');
+    return jsonResponse({ login: 'aryan', name: 'Aryan' });
+  };
+  const client = new GitHubClient('test-token', { sleep: async () => {} });
+  assert.equal((await client.getAuthenticatedUser()).login, 'aryan');
+});
+
 test('sends authenticated GitHub headers', async () => {
   let request;
   const client = clientWith(async (url, options) => {

@@ -21,7 +21,7 @@ This performs:
 |---|---|
 | Helpers | Paths, languages, indentation, UTF-8 Base64, SHA-256 fingerprint, PKCE, bounded storage, generated text |
 | Extractor | Problem URL, numbered titles, language labels, runtime and memory parsing |
-| GitHub client | Auth headers, push-permission filtering, missing files, content decoding, SHA updates, retries, 401 classification |
+| GitHub client | Browser fetch receiver, auth headers, push-permission filtering, missing files, content decoding, SHA updates, retries, 401 classification |
 | OAuth service | Origin rejection, background requests without Origin, allowed IDs, matching callbacks, parsed Vercel bodies, body-size limits, request tracing, PKCE forwarding |
 | OAuth client | Extension ID headers on both requests, PKCE challenge, callback state, and pending-state cleanup |
 | Submission service | New file and README, identical-content no-op, stale-SHA recovery, history tracing, expired-token handling |

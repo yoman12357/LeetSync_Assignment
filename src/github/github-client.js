@@ -20,7 +20,7 @@ export class GitHubClient {
   constructor(token, options = {}) {
     if (!token) throw new Error('GitHub token is required');
     this.token = token;
-    this.fetch = options.fetch || globalThis.fetch;
+    this.fetch = options.fetch || globalThis.fetch.bind(globalThis);
     this.sleep = options.sleep || ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
     this.baseUrl = options.baseUrl || GITHUB.apiBase;
   }
