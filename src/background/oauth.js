@@ -10,7 +10,8 @@ const OAUTH_TIMEOUT_MS = 10 * 60 * 1000;
 export async function authenticateWithGitHub({ identity, sessionStorage, fetch: request = fetch }) {
   const requestId = createRequestId();
   const redirectUri = identity.getRedirectURL();
-  const config = await fetchOauthConfig(request, requestId);
+  const extensionId = new URL(redirectUri).hostname.split('.')[0];
+  const config = await fetchOauthConfig(request, requestId, extensionId);
   const state = createRandomString();
   const verifier = createRandomString(48);
   const challenge = await createPkceChallenge(verifier);
@@ -43,7 +44,11 @@ export async function authenticateWithGitHub({ identity, sessionStorage, fetch: 
   const response = await request(`${GITHUB.oauthServerUrl}/api/github/token`, {
     method: 'POST',
     signal: AbortSignal.timeout(10_000),
-    headers: { 'Content-Type': 'application/json', 'X-Request-Id': pending.requestId },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Request-Id': pending.requestId,
+      'X-LeetSync-Extension-Id': extensionId,
+    },
     body: JSON.stringify({ code, codeVerifier: pending.verifier, redirectUri }),
   });
   const body = await readJson(response);
@@ -53,15 +58,15 @@ export async function authenticateWithGitHub({ identity, sessionStorage, fetch: 
   return { token: body.accessToken, requestId: body.requestId || pending.requestId };
 }
 
-async function fetchOauthConfig(request, requestId) {
+async function fetchOauthConfig(request, requestId, extensionId) {
   let response;
   try {
     response = await request(`${GITHUB.oauthServerUrl}/api/config`, {
-      headers: { 'X-Request-Id': requestId },
+      headers: { 'X-Request-Id': requestId, 'X-LeetSync-Extension-Id': extensionId },
       signal: AbortSignal.timeout(5_000),
     });
   } catch {
-    throw new Error(`OAuth service is unavailable at ${GITHUB.oauthServerUrl}. Start it with npm run server.`);
+    throw new Error(`OAuth service is unavailable at ${GITHUB.oauthServerUrl}. Check its deployment or start the local server.`);
   }
   const body = await readJson(response);
   if (!response.ok || !body.clientId) throw new Error(body.error || 'OAuth service is not configured.');

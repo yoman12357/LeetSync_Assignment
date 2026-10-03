@@ -15,7 +15,7 @@ The extension does not use a database. The GitHub client secret exists only in V
 4. Choose **Other** as the framework preset.
 5. Keep the root directory as the repository root.
 6. Use `npm run build` as the build command.
-7. Do not set an output directory.
+7. Set the output directory to `dist`.
 8. Deploy once to obtain the production address, such as `https://leetsync-assignment.vercel.app`.
 
 The files under `api` expose these serverless routes:
@@ -27,6 +27,8 @@ POST /api/github/token
 ```
 
 The first deployment can report `configured: false` until the GitHub credentials are added.
+
+The root address can return 404 because this project serves an OAuth API and extension assets. Check `/api/health` to verify the service.
 
 ## 2. Create the GitHub OAuth App
 

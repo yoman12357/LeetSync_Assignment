@@ -27,9 +27,10 @@ export function createOauthHandler(options = {}) {
 
     try {
       const origin = request.headers.origin || '';
-      cors = corsHeaders(origin, config.allowedExtensionIds);
+      const extensionId = requestExtensionId(request.headers, config.allowedExtensionIds);
+      cors = origin ? corsHeaders(origin, config.allowedExtensionIds) : {};
       if (request.method === 'OPTIONS') {
-        if (!cors) {
+        if (!origin || !cors) {
           status = 403;
           outcome = 'ORIGIN_REJECTED';
           return send(response, status, { error: 'Origin is not allowed.', requestId });
@@ -50,7 +51,7 @@ export function createOauthHandler(options = {}) {
       }
 
       if (request.method === 'GET' && pathname === '/api/config') {
-        if (!cors) {
+        if (!extensionId) {
           status = 403;
           outcome = 'ORIGIN_REJECTED';
           return send(response, status, { error: 'Extension origin is not allowed.', requestId });
@@ -66,7 +67,7 @@ export function createOauthHandler(options = {}) {
       }
 
       if (request.method === 'POST' && pathname === '/api/github/token') {
-        if (!cors) {
+        if (!extensionId) {
           status = 403;
           outcome = 'ORIGIN_REJECTED';
           return send(response, status, { error: 'Extension origin is not allowed.', requestId });
@@ -77,7 +78,7 @@ export function createOauthHandler(options = {}) {
           return send(response, status, { error: 'GitHub OAuth credentials are not configured.', requestId }, cors);
         }
         const body = await readJson(request);
-        validateExchangeRequest(body, config.allowedExtensionIds);
+        validateExchangeRequest(body, config.allowedExtensionIds, extensionId);
         const githubResponse = await config.fetch('https://github.com/login/oauth/access_token', {
           method: 'POST',
           signal: AbortSignal.timeout(10_000),
@@ -121,23 +122,36 @@ export function createOauthHandler(options = {}) {
   };
 }
 
-function validateExchangeRequest(body, allowedIds) {
+function validateExchangeRequest(body, allowedIds, extensionId) {
   if (!body || typeof body !== 'object') throw httpError(400, 'INVALID_BODY', 'A JSON request body is required.');
   if (!/^[A-Za-z0-9_-]{8,200}$/.test(body.code || '')) throw httpError(400, 'INVALID_CODE', 'Authorization code is invalid.');
   if (!/^[A-Za-z0-9_-]{43,128}$/.test(body.codeVerifier || '')) throw httpError(400, 'INVALID_VERIFIER', 'PKCE verifier is invalid.');
   let redirect;
   try { redirect = new URL(body.redirectUri); } catch { throw httpError(400, 'INVALID_REDIRECT', 'Redirect URI is invalid.'); }
   const match = redirect.hostname.match(/^([a-p]{32})\.chromiumapp\.org$/);
-  if (redirect.protocol !== 'https:' || !match || (allowedIds.length && !allowedIds.includes(match[1]))) {
+  if (redirect.protocol !== 'https:' || !match || !allowedIds.includes(match[1]) || match[1] !== extensionId) {
     throw httpError(400, 'INVALID_REDIRECT', 'Redirect URI does not belong to an allowed extension.');
   }
+}
+
+function requestExtensionId(headers, allowedIds) {
+  const declaredId = headers['x-leetsync-extension-id'];
+  const origin = headers.origin;
+  if (origin) {
+    const match = origin.match(/^chrome-extension:\/\/([a-p]{32})$/);
+    if (!match || !allowedIds.includes(match[1])) return null;
+    if (declaredId !== undefined && declaredId !== match[1]) return null;
+    return match[1];
+  }
+  return typeof declaredId === 'string' && /^[a-p]{32}$/.test(declaredId)
+    && allowedIds.includes(declaredId) ? declaredId : null;
 }
 
 function corsHeaders(origin, allowedIds) {
   const match = origin.match(/^chrome-extension:\/\/([a-p]{32})$/);
   if (!match || !allowedIds.length || !allowedIds.includes(match[1])) return null;
   return {
-    'Access-Control-Allow-Headers': 'Content-Type, X-Request-Id',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Request-Id, X-LeetSync-Extension-Id',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Expose-Headers': 'X-Request-Id',
@@ -146,6 +160,14 @@ function corsHeaders(origin, allowedIds) {
 }
 
 function readJson(request) {
+  if (request.body !== undefined) {
+    const raw = typeof request.body === 'string' || Buffer.isBuffer(request.body)
+      ? request.body.toString() : JSON.stringify(request.body);
+    if (Buffer.byteLength(raw) > BODY_LIMIT) {
+      throw httpError(413, 'BODY_TOO_LARGE', 'Request body is too large.');
+    }
+    try { return JSON.parse(raw); } catch { throw httpError(400, 'INVALID_JSON', 'Request body must be valid JSON.'); }
+  }
   return new Promise((resolve, reject) => {
     let body = '';
     request.setEncoding('utf8');

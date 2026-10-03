@@ -104,10 +104,12 @@ LeetSync does not overwrite the repository's root README.
 - Writes to the same problem and language are serialized inside the active service worker.
 - A stale SHA conflict triggers one fresh read and one safe retry.
 - A GitHub 401 clears authentication state and requires login again.
-- OAuth service CORS accepts only configured Chrome extension IDs.
+- OAuth requests include the configured extension ID; when an Origin header is present, it must match an allowed extension origin.
 - Tokens, authorization codes, and submitted source are excluded from application logs.
 
 `chrome.storage.local` is extension-scoped persistence, not encrypted secret storage. A production extension should consider a short-lived GitHub App token design when stronger token lifecycle control is required.
+
+Extension IDs and Origin headers are routing checks, not proof of identity. GitHub verifies the authorization code, PKCE verifier, client credentials, and callback during the token exchange.
 
 ## Request tracing
 

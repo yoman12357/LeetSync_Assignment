@@ -156,7 +156,7 @@ This guide states what enters and leaves every maintained project file. Generate
 
 - Input: environment configuration and HTTP requests for health, public OAuth config, CORS preflight, and code exchange.
 - Output: JSON responses with `X-Request-Id`, GitHub token exchange requests, and structured completion logs.
-- Responsibility: protects the client secret, restricts extension origins and redirect URIs, validates body size and fields, and exchanges authorization codes with GitHub. It exports both a reusable request handler and a local HTTP server wrapper.
+- Responsibility: protects the client secret, checks extension IDs and origins, validates matching redirect URIs and body-size limits, and exchanges authorization codes with GitHub. It supports streamed local requests and parsed Vercel bodies, and exports both a reusable request handler and a local HTTP server wrapper.
 
 ### `api/health.js`
 
@@ -227,6 +227,12 @@ This guide states what enters and leaves every maintained project file. Generate
 - Input: an ephemeral local server, allowed and rejected origins, malformed requests, and a mocked GitHub exchange.
 - Output: route status, request-ID, validation, and forwarded-field assertions.
 - Responsibility: verifies the complete local HTTP request/response boundary.
+
+### `tests/oauth.test.js`
+
+- Input: mocked Chrome identity, session storage, config response, and token response.
+- Output: assertions for both extension-ID headers, request tracing, callback state, PKCE, and session cleanup.
+- Responsibility: verifies the browser half of the OAuth flow before deployment.
 
 ### `tests/submission-service.test.js`
 

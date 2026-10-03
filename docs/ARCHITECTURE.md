@@ -94,11 +94,13 @@ sequenceDiagram
 | Method | Route | Input | Output |
 |---|---|---|---|
 | `GET` | `/health` locally or `/api/health` on Vercel | Optional `X-Request-Id` | Health and configured state |
-| `GET` | `/api/config` | Allowed extension `Origin` | Public GitHub OAuth Client ID |
+| `GET` | `/api/config` | Allowed extension ID, matching Origin if present | Public GitHub OAuth Client ID |
 | `POST` | `/api/github/token` | Code, PKCE verifier, redirect URI | Access token or classified error |
 | `OPTIONS` | OAuth routes | CORS preflight | Allowed origin and headers |
 
 Each response includes `X-Request-Id`. Each completed request produces a JSON log containing request ID, method, path, status, outcome, and duration.
+
+Background OAuth requests send `X-LeetSync-Extension-Id` because extension requests can omit Origin. The server checks that ID against the allowlist and rejects mismatched origins or callbacks. These headers do not authenticate a user; GitHub's code exchange and PKCE checks establish authorization. The handler accepts both Node request streams and bodies already parsed by Vercel.
 
 ## Internal message contract
 
