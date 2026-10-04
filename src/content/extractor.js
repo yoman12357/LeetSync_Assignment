@@ -18,7 +18,7 @@ export function extractSubmission(document, location, captured = {}) {
   const currentCapture = captured.problemSlug && captured.problemSlug !== identity.slug ? {} : captured;
   const titleText = firstText(document, TITLE_SELECTORS);
   const parsedTitle = parseTitle(titleText || identity.title);
-  const code = currentCapture.code || extractVisibleCode(document);
+  const code = currentCapture.code || '';
   const language = normalizeLanguage(currentCapture.language || firstText(document, LANGUAGE_SELECTORS));
 
   return {
@@ -60,31 +60,10 @@ export function extractStats(text = '') {
   return runtime || memory ? { runtime: runtime || null, memory: memory || null } : null;
 }
 
-export function isAcceptedResult(document) {
-  const selectors = [
-    '[data-e2e-locator="submission-result"]',
-    '[data-e2e-locator="submission-result-title"]',
-    '[class*="result"] [class*="success"]',
-  ];
-  return selectors.some((selector) => [...document.querySelectorAll(selector)]
-    .some((element) => element.textContent.trim().toLowerCase() === 'accepted'));
-}
-
 function firstText(document, selectors) {
   for (const selector of selectors) {
     const text = document.querySelector(selector)?.textContent?.trim();
     if (text) return text;
-  }
-  return '';
-}
-
-function extractVisibleCode(document) {
-  const lines = document.querySelectorAll('.monaco-editor .view-lines .view-line');
-  if (lines.length) return [...lines].map((line) => line.textContent).join('\n');
-  for (const selector of ['textarea[data-mode-id]', '.CodeMirror-code', 'pre code']) {
-    const element = document.querySelector(selector);
-    const value = element?.value || element?.textContent;
-    if (value?.trim()) return value;
   }
   return '';
 }

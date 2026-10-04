@@ -64,7 +64,10 @@ sequenceDiagram
 
     User->>Page: Submit code
     Bridge->>Bridge: Capture typed_code and lang from submit request
+    Page-->>Bridge: Submit response with submission_id
+    Bridge->>Bridge: Associate full source with submission_id
     Page-->>Bridge: Accepted check response
+    Bridge->>Bridge: Match check URL to captured submission_id
     Bridge->>Content: SUBMISSION_ACCEPTED window message
     Content->>Content: Combine network data and DOM metadata
     Content->>Worker: SUBMISSION_ACCEPTED with requestId
@@ -89,6 +92,8 @@ sequenceDiagram
     Content-->>User: Result notification with requestId
 ```
 
+Results matching a captured Submit request trigger synchronization. The content script also watches Submit clicks and Ctrl/Cmd+Enter. Without a bridge result, it finds a new submission ID from the detail URL or the authenticated per-problem submission list, queries LeetCode for the full judged source, validates Accepted status, problem slug, and timestamp, then passes that source to the worker. Duplicate submission IDs are ignored. Test runs and previously viewed results do not trigger synchronization. Rendered editor lines can contain only part of the file and are never used as source. The worker rejects messages without a submission ID so tabs still running the original content script must be refreshed before writing.
+
 ## OAuth HTTP routes
 
 | Method | Route | Input | Output |
@@ -109,6 +114,7 @@ Background OAuth requests send `X-LeetSync-Extension-Id` because extension reque
   "type": "SUBMISSION_ACCEPTED",
   "requestId": "20c1ff07-40f0-46ad-992d-9fdd70ef5849",
   "payload": {
+    "submissionId": "123456789",
     "problemSlug": "two-sum",
     "problemId": "1",
     "title": "Two Sum",
@@ -119,7 +125,7 @@ Background OAuth requests send `X-LeetSync-Extension-Id` because extension reque
 }
 ```
 
-The response preserves `requestId` and contains `success`, an outcome `type`, and either a result message or an error.
+The response preserves `requestId` and contains `success`, an outcome `type`, and either a result message or an error. Successful results, including identical-content skips, include the repository, file path, and GitHub URL. These fields are also recorded in history.
 
 ## Correctness model
 

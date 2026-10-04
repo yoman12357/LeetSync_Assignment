@@ -20,14 +20,19 @@ This performs:
 | Area | Verified behavior |
 |---|---|
 | Helpers | Paths, languages, indentation, UTF-8 Base64, SHA-256 fingerprint, PKCE, bounded storage, generated text |
-| Extractor | Problem URL, numbered titles, language labels, runtime and memory parsing |
+| Extractor | Problem URL, numbered titles, language labels, runtime and memory parsing, complete source without editor-text fallback |
+| Page bridge | Fetch string/Request/URL inputs, XHR text/JSON responses, matching submission IDs, overlapping submissions, ignored test runs, repeated polls, non-JSON responses |
+| Content script | Complete accepted source, long-running submissions, overlapping results, previous-problem rejection, disabled sync, window-message origin checks, recovery without bridge capture, recovery deduplication |
+| Submission reader | Same-origin submission-list and GraphQL reads, browser fetch receiver, CSRF header, public problem number, complete source, rejection of old/failed/unrelated results, explicit extraction errors |
 | GitHub client | Browser fetch receiver, auth headers, push-permission filtering, missing files, content decoding, SHA updates, retries, 401 classification |
 | OAuth service | Origin rejection, background requests without Origin, allowed IDs, matching callbacks, parsed Vercel bodies, body-size limits, request tracing, PKCE forwarding |
 | OAuth client | Extension ID headers on both requests, PKCE challenge, callback state, and pending-state cleanup |
-| Submission service | New file and README, identical-content no-op, stale-SHA recovery, history tracing, expired-token handling |
+| Submission service | New file and README, identical-content no-op with destination link, stale-SHA recovery, history tracing, rejection of outdated content scripts, expired-token handling |
 | Build validation | Every manifest asset exists, source text contains no corrupted encoding or emoji characters |
 
 ## Manual acceptance procedure
+
+The GitHub Actions workflow runs `npm run verify` on pushes and pull requests without OAuth credentials. A successful local run does not imply the remote workflow or live integration has already been checked.
 
 1. Run `npm run verify`.
 2. Load `dist` as an unpacked extension.
@@ -39,6 +44,12 @@ This performs:
 8. Change the code, submit again, and verify an update commit appears.
 9. Revoke the OAuth token in GitHub settings and submit again; verify the popup returns to disconnected state.
 10. Trigger repeated DOM mutations around an Accepted result and verify the repository is not spammed.
+11. Use Run Code with passing test cases and verify there is no synchronization notification or GitHub commit.
+12. Scroll the editor so only part of the solution is visible, Submit, and verify the entire submitted source is stored.
+13. Start on the LeetCode problem list, navigate into a problem without refreshing, Submit, and verify synchronization.
+14. Verify Submit shows a waiting notification. If network capture is missed, verify a new submission detail URL triggers recovery and saves the complete judged source only once.
+15. Repeat with a submission whose result leaves the browser URL unchanged; verify recovery through the per-problem submission list.
+16. Verify new history entries provide a working file link and identical source is labeled Already saved. Verify the popup version matches the rebuilt manifest.
 
 For the hosted acceptance path, follow [DEPLOYMENT.md](DEPLOYMENT.md) and verify `/api/health` before loading the production build.
 

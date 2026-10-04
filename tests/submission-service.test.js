@@ -5,6 +5,7 @@ import { GitHubApiError } from '../src/github/github-client.js';
 import { STORAGE } from '../src/config/constants.js';
 
 const submission = {
+  submissionId: '123',
   problemSlug: 'two-sum',
   problemId: '1',
   title: 'Two Sum',
@@ -35,6 +36,8 @@ test('creates a new solution, README, fingerprint, and traceable history', async
   assert.equal(writes[0][2], '0001-two-sum/solution.py');
   assert.equal(writes[1][2], '0001-two-sum/README.md');
   assert.equal(storage.state[STORAGE.history][0].requestId, 'request-create');
+  assert.equal(storage.state[STORAGE.history][0].path, '0001-two-sum/solution.py');
+  assert.equal(result.url, 'https://github.com/owner/solutions/blob/main/0001-two-sum/solution.py');
   assert.equal(Object.keys(storage.state[STORAGE.fingerprints]).length, 1);
 });
 
@@ -50,7 +53,20 @@ test('treats identical GitHub content as an idempotent no-op', async () => {
   storage.state[STORAGE.settings].includePerformance = false;
   const result = await createSubmissionService({ storage, clientFactory: () => client }).sync(submission, 'request-duplicate');
   assert.equal(result.type, 'SKIPPED_DUPLICATE');
+  assert.equal(result.path, '0001-two-sum/solution.py');
+  assert.equal(result.url, 'https://github.com/owner/solutions/blob/main/0001-two-sum/solution.py');
+  assert.equal(storage.state[STORAGE.history][0].url, result.url);
   assert.equal(writes, 0);
+});
+
+test('rejects old content scripts before any GitHub operation', async () => {
+  let reads = 0;
+  const service = createSubmissionService({
+    storage: memoryStorage(configuredState()),
+    clientFactory: () => ({ getFile() { reads++; } }),
+  });
+  await assert.rejects(service.sync({ ...submission, submissionId: undefined }, 'request-old-tab'), /Refresh the LeetCode tab/);
+  assert.equal(reads, 0);
 });
 
 test('recovers once from a stale SHA conflict', async () => {

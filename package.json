@@ -1,6 +1,6 @@
 {
   "name": "leetsync",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Chrome extension that syncs accepted LeetCode submissions to GitHub",
   "type": "module",
   "private": true,

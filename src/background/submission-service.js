@@ -66,9 +66,14 @@ async function processSubmission(dependencies, payload, requestId) {
 
   try {
     const existing = await client.getFile(repository.owner, repository.name, solutionPath);
+    const destination = {
+      repository: `${repository.owner}/${repository.name}`,
+      path: solutionPath,
+      url: existing.url || `https://github.com/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.name)}/blob/${encodeURIComponent(repository.defaultBranch || 'main')}/${solutionPath.split('/').map(encodeURIComponent).join('/')}`,
+    };
     if (existing.exists && normalizeCode(existing.content) === normalizeCode(decoratedSource)) {
-      await storeSuccess(dependencies.storage, stored, fingerprint, payload, 'skipped', requestId);
-      return { success: true, type: 'SKIPPED_DUPLICATE', message: 'This solution is already synchronized.', requestId };
+      await storeSuccess(dependencies.storage, stored, fingerprint, payload, 'skipped', requestId, destination);
+      return { success: true, type: 'SKIPPED_DUPLICATE', message: `Already saved in ${destination.repository}: ${solutionPath}`, requestId, ...destination };
     }
 
     const action = existing.exists ? 'update' : 'create';
@@ -80,6 +85,7 @@ async function processSubmission(dependencies, payload, requestId) {
       action,
     );
     const result = await putWithConflictRecovery(client, repository, solutionPath, decoratedSource, message, existing);
+    destination.url = result.url || destination.url;
     const warnings = [];
 
     if (settings.generateReadme) {
@@ -90,7 +96,7 @@ async function processSubmission(dependencies, payload, requestId) {
       }
     }
 
-    await storeSuccess(dependencies.storage, stored, fingerprint, payload, action === 'create' ? 'created' : 'updated', requestId);
+    await storeSuccess(dependencies.storage, stored, fingerprint, payload, action === 'create' ? 'created' : 'updated', requestId, destination);
     return {
       success: true,
       type: 'SYNC_SUCCESS',
@@ -99,6 +105,7 @@ async function processSubmission(dependencies, payload, requestId) {
       requestId,
       result,
       warnings,
+      ...destination,
     };
   } catch (error) {
     if (error instanceof GitHubApiError && error.type === 'AUTH_EXPIRED') await dependencies.onAuthExpired();
@@ -113,7 +120,7 @@ async function putWithConflictRecovery(client, repository, path, content, messag
     if (!(error instanceof GitHubApiError) || error.type !== 'CONFLICT') throw error;
     const fresh = await client.getFile(repository.owner, repository.name, path);
     if (fresh.exists && normalizeCode(fresh.content) === normalizeCode(content)) {
-      return { path, sha: fresh.sha, duplicateAfterConflict: true };
+      return { path, sha: fresh.sha, url: fresh.url, duplicateAfterConflict: true };
     }
     return client.putFile(repository.owner, repository.name, path, content, message, fresh.sha);
   }
@@ -126,7 +133,7 @@ async function syncReadme(client, repository, path, payload, message) {
   await client.putFile(repository.owner, repository.name, path, content, message, existing.sha);
 }
 
-async function storeSuccess(storage, stored, fingerprint, payload, action, requestId) {
+async function storeSuccess(storage, stored, fingerprint, payload, action, requestId, destination) {
   const timestamp = Date.now();
   const fingerprints = addBoundedEntry(stored[STORAGE.fingerprints], fingerprint, timestamp);
   const history = [{
@@ -134,6 +141,8 @@ async function storeSuccess(storage, stored, fingerprint, payload, action, reque
     title: payload.title,
     language: payload.language,
     problemSlug: payload.problemSlug,
+    problemId: payload.problemId,
+    ...destination,
     requestId,
     timestamp,
   }, ...(stored[STORAGE.history] || [])].slice(0, LIMITS.history);
@@ -142,6 +151,11 @@ async function storeSuccess(storage, stored, fingerprint, payload, action, reque
 
 function validateSubmission(payload) {
   if (!payload || typeof payload !== 'object') throw new Error('Submission payload is missing.');
+  if (!/^\d+$/.test(payload.submissionId || '')) {
+    const error = new Error('This tab is using an older LeetSync script. Refresh the LeetCode tab and submit again.');
+    error.type = 'PAGE_RELOAD_REQUIRED';
+    throw error;
+  }
   for (const field of ['problemSlug', 'problemId', 'title', 'language', 'code']) {
     if (typeof payload[field] !== 'string' || !payload[field].trim()) throw new Error(`Submission field is invalid: ${field}`);
   }

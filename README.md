@@ -2,7 +2,7 @@
 
 LeetSync is a Chrome Manifest V3 extension that detects accepted LeetCode submissions and stores the submitted source in a GitHub repository selected by the user.
 
-The implementation includes GitHub OAuth, repository selection and creation, LeetCode page observation, main-world network capture, duplicate prevention, SHA-based file updates, optional problem READMEs, performance headers, request tracing, and automated tests.
+The implementation includes GitHub OAuth, repository selection and creation, main-world network capture, duplicate prevention, SHA-based file updates, optional problem READMEs, performance headers, request tracing, and automated tests.
 
 ## Requirements
 
@@ -18,7 +18,7 @@ For the complete hosted setup and submission checklist, follow [Deployment and c
 ### 1. Install and build
 
 ```bash
-npm install
+npm ci
 npm run build
 ```
 
@@ -64,6 +64,10 @@ Select any repository for which the connected account has push permission, or cr
 ### 5. Use the extension
 
 Open a URL under `https://leetcode.com/problems/`, submit a solution, and wait for an Accepted result. The content script sends the captured submission to the background worker. A notification reports whether the solution was created, updated, skipped as identical, or rejected.
+
+LeetSync loads across LeetCode so navigation from the problem list is supported. It captures the full source from the Submit request and matches its submission ID to the Accepted response. If network capture misses a submission, it finds the new submission in your authenticated submission list or a submission detail URL, then reads the full judged source from LeetCode. Run Code test results and previously viewed submissions do not trigger synchronization. After rebuilding or reloading the extension, refresh the LeetCode tab before submitting.
+
+The popup displays the extension version and links to the selected repository. New synchronization entries and success notifications link directly to the saved file. "Already saved" means the file exists in GitHub with identical content. Problem folders such as `0002-add-two-numbers` are created at the repository root.
 
 ## Commands
 
@@ -128,6 +132,27 @@ Example service log:
 - [Testing and manual verification](docs/TESTING.md)
 - [Deployment and credentials](docs/DEPLOYMENT.md)
 - [Project requirements](docs/PROJECT_SPECIFICATION.md)
+- [External references and credits](docs/REFERENCES.md)
+- [Submission and demo checklist](docs/SUBMISSION.md)
+
+## Submission
+
+Repository: [LeetSync_Assignment](https://github.com/yoman12357/LeetSync_Assignment).
+
+Hosted OAuth service: [production health endpoint](https://leetsyncassignment.vercel.app/api/health). The root address is not a web application: LeetSync is opened from the browser's extension toolbar.
+
+To build against that service in PowerShell:
+
+```powershell
+$env:LEETSYNC_OAUTH_SERVER_URL = "https://leetsyncassignment.vercel.app"
+npm run verify
+npm run package
+Remove-Item Env:LEETSYNC_OAUTH_SERVER_URL
+```
+
+Load `dist` using **Load unpacked**, or unzip `leetsync-extension.zip` and load the extracted folder. Refresh existing LeetCode tabs after reloading the extension.
+
+The demonstration will be added as [`demo.mp4`](demo.mp4) in this repository's root. A live accepted-submission test and the recording remain required even when automated tests pass.
 
 ## Known boundaries
 

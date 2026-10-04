@@ -35,6 +35,7 @@ const elements = {
 let repositories = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
+  byId('extensionVersion').textContent = `v${chrome.runtime.getManifest().version}`;
   elements.redirectUri.value = chrome.identity.getRedirectURL();
   bindEvents();
   await refreshStatus();
@@ -183,7 +184,15 @@ function renderRepository(repository) {
   elements.selectedRepository.classList.toggle('hidden', !configured);
   elements.changeRepository.classList.toggle('hidden', !configured);
   elements.repositoryPicker.classList.toggle('hidden', configured);
-  elements.selectedRepository.textContent = configured ? repository.fullName : '';
+  elements.selectedRepository.replaceChildren();
+  if (configured) {
+    const link = document.createElement('a');
+    link.href = `https://github.com/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.name)}`;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = repository.fullName;
+    elements.selectedRepository.append(link);
+  }
 }
 
 function showRepositoryPicker() {
@@ -212,9 +221,18 @@ function renderHistory(history) {
     action.className = 'history-action';
     meta.className = 'history-meta';
     title.textContent = item.title;
-    action.textContent = item.action;
+    action.textContent = item.action === 'skipped' ? 'Already saved' : item.action;
     meta.textContent = `${new Date(item.timestamp).toLocaleString()} - ${item.requestId}`;
     row.append(title, action, meta);
+    if (item.url?.startsWith('https://github.com/')) {
+      const link = document.createElement('a');
+      link.className = 'history-link';
+      link.href = item.url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = `Open ${item.path || 'saved solution'}`;
+      row.append(link);
+    }
     elements.history.append(row);
   }
 }

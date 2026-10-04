@@ -115,6 +115,7 @@ export class GitHubClient {
       exists: true,
       content: decodeBase64(result.body.content || ''),
       sha: result.body.sha,
+      url: result.body.html_url,
     };
   }
 
@@ -154,5 +155,6 @@ function mapRepository(repository) {
     owner: repository.owner.login,
     private: repository.private,
     url: repository.html_url,
+    defaultBranch: repository.default_branch || 'main',
   };
 }

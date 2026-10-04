@@ -146,6 +146,8 @@ button { cursor: pointer; }
 .history-title { overflow: hidden; color: #dbe2ec; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .history-action { color: #7dd3fc; font-size: 10px; text-transform: capitalize; }
 .history-meta { grid-column: 1 / -1; color: #718096; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 9px; }
+.history-link { grid-column: 1 / -1; color: #9da7ff; font-size: 11px; overflow-wrap: anywhere; }
+.repository-selected a { color: inherit; }
 .history-empty { margin: 4px 0; color: #738095; font-size: 11px; }
 
 .loading {
