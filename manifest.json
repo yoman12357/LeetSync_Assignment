@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyNhbS8bd3wa/SS3Y2WsolU9cYHEYajMLxuzQFOkCZ+xqOyX6MB6QnFK1CeKNbrPXh0jt4cG9XLGuXa54xbedew1NQqOI+ITfDjCbhVYJnSBaYYVjYakZ28WBWGr89zIOsLYS/kOpbXswOIEKQlbegRJ8cka0/0bQNTlL8SOSrvQM1W0dnbsIyYhp2xaKESzqlAcYd20e7lqsrz2XUxxtCOZrfyzjbCth96aIdWWtA4PNXq3zRzMZb/ySq7IHH7oahE+80rRbC3lZ1DssLoxSQJtIUrq9UlyL4HMoE4LJ4KHv6qP6s18cVWTeuJ/Z2Kml8NqksJmALIXM98PO1p5P3QIDAQAB",
   "name": "LeetSync",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Sync accepted LeetCode submissions to a selected GitHub repository.",
   "permissions": ["identity", "storage"],
   "host_permissions": [

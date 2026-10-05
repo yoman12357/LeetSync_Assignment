@@ -2,6 +2,8 @@
 
 ## Automated verification
 
+Local verification on 5 October 2026: `npm run verify` passed all 76 tests, lint, production build, and manifest/text validation. `npm run package` also succeeded with the production OAuth URL. These are local results, not a claim that remote CI or every live-account scenario passed.
+
 Run:
 
 ```bash
@@ -23,7 +25,7 @@ This performs:
 | Extractor | Problem URL, numbered titles, language labels, runtime and memory parsing, complete source without editor-text fallback |
 | Page bridge | Fetch string/Request/URL inputs, XHR text/JSON responses, matching submission IDs, overlapping submissions, ignored test runs, repeated polls, non-JSON responses |
 | Content script | Complete accepted source, long-running submissions, overlapping results, previous-problem rejection, disabled sync, window-message origin checks, recovery without bridge capture, recovery deduplication |
-| Submission reader | Same-origin submission-list and GraphQL reads, browser fetch receiver, CSRF header, public problem number, complete source, rejection of old/failed/unrelated results, explicit extraction errors |
+| Submission reader | Same-origin list/GraphQL/exact-ID check reads, named verdicts, pending judging, server-clock alignment, browser fetch receiver, CSRF header, complete source, rejection of old/failed/unrelated results |
 | GitHub client | Browser fetch receiver, auth headers, push-permission filtering, missing files, content decoding, SHA updates, retries, 401 classification |
 | OAuth service | Origin rejection, background requests without Origin, allowed IDs, matching callbacks, parsed Vercel bodies, body-size limits, request tracing, PKCE forwarding |
 | OAuth client | Extension ID headers on both requests, PKCE challenge, callback state, and pending-state cleanup |
@@ -50,6 +52,8 @@ The GitHub Actions workflow runs `npm run verify` on pushes and pull requests wi
 14. Verify Submit shows a waiting notification. If network capture is missed, verify a new submission detail URL triggers recovery and saves the complete judged source only once.
 15. Repeat with a submission whose result leaves the browser URL unchanged; verify recovery through the per-problem submission list.
 16. Verify new history entries provide a working file link and identical source is labeled Already saved. Verify the popup version matches the rebuilt manifest.
+17. Verify waiting remains visible until replaced by a final verdict or saving progress. If the worker never replies, verify an explicit timeout instructs you to inspect history before retrying.
+18. Reload the extension with an existing LeetCode tab open. Verify the stale tab shows refresh instructions once, then refresh it and submit with the new content script.
 
 For the hosted acceptance path, follow [DEPLOYMENT.md](DEPLOYMENT.md) and verify `/api/health` before loading the production build.
 

@@ -92,7 +92,33 @@ sequenceDiagram
     Content-->>User: Result notification with requestId
 ```
 
-Results matching a captured Submit request trigger synchronization. The content script also watches Submit clicks and Ctrl/Cmd+Enter. Without a bridge result, it finds a new submission ID from the detail URL or the authenticated per-problem submission list, queries LeetCode for the full judged source, validates Accepted status, problem slug, and timestamp, then passes that source to the worker. Duplicate submission IDs are ignored. Test runs and previously viewed results do not trigger synchronization. Rendered editor lines can contain only part of the file and are never used as source. The worker rejects messages without a submission ID so tabs still running the original content script must be refreshed before writing.
+Results matching a captured Submit request trigger synchronization. The content script also watches Submit clicks and Ctrl/Cmd+Enter. Without a bridge result, it finds a new submission ID from the detail URL or the authenticated per-problem submission list, queries GraphQL for the full judged source, and validates its problem slug and freshness using LeetCode's server clock. It verifies the named verdict for that exact ID through the check endpoint, not a numeric GraphQL status code. Only Accepted is sent to the worker; pending results retry, rejected results display their actual verdict, and unverifiable results produce an error. Duplicate submission IDs are ignored. Test runs and previously viewed results do not trigger synchronization. Rendered editor lines can contain only part of the file and are never used as source. The worker rejects messages without a submission ID so tabs still running the original content script must be refreshed before writing.
+
+### Recovery request trace
+
+```mermaid
+sequenceDiagram
+    participant Content as Content script
+    participant Reader as Submission reader
+    participant LC as LeetCode
+    participant Worker as Service worker
+    Content->>Reader: Current problem, submit time, optional ID
+    opt No ID in detail URL
+        Reader->>LC: GET /api/submissions/{slug}/?offset=0&limit=10
+        LC-->>Reader: Recent submission ID and timestamp
+    end
+    Reader->>LC: POST /graphql/ with exact ID and slug
+    LC-->>Reader: Full source, language, problem, timestamp
+    Reader->>LC: GET /submissions/detail/{id}/check/
+    LC-->>Reader: state and named status_msg
+    Reader-->>Content: Accepted source, pending, rejected, or error
+    opt Exact submission is Accepted
+        Content->>Worker: SUBMISSION_ACCEPTED plus requestId
+        Worker-->>Content: GitHub result plus same requestId
+    end
+```
+
+Waiting and saving notifications remain visible until a final result replaces them. Recovery has a five-minute limit; a worker reply has a two-minute timeout that tells the user to inspect history before retrying because a late write may still finish. If Chrome invalidates the content script after an extension reload, it stops recovery and shows refresh instructions once.
 
 ## OAuth HTTP routes
 

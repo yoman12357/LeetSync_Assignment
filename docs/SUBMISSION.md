@@ -16,7 +16,7 @@
 | Documentation | README, diagrams, file guide, deployment and testing guides | Verify a fresh installation and the current hosted service. |
 | External-source understanding | [REFERENCES.md](REFERENCES.md), inline LeetHub credit | Explain the query-field reference and credit any additional material used. |
 | Features beyond basic sync | Full-source recovery, identical-content no-op, SHA conflict recovery, request IDs, direct file links | Show their purpose without claiming unique invention. |
-| Working submission | Automated tests and live acceptance procedure | Record root `demo.mp4` using a real accepted submission. |
+| Working submission | [Recorded extension demonstration](../demo.mp4), automated tests, and live acceptance procedure | The recording uses 1.0.1; rerun the live acceptance procedure with the current 1.0.3 build. |
 | Delivery | OAuth health link and packaged/unpacked extension | Share the repository and installation instructions; the API URL alone is not the extension. |
 
 ## Suggested recording: 4-6 minutes
@@ -31,7 +31,7 @@ Save the recording as `demo.mp4` in the project root.
 6. Run `npm run verify`, then explain the architecture and trace one request through page bridge, content script, service worker, GitHub client, and response/history.
 7. Explain why OAuth needs a server-side secret, why the token never reaches the LeetCode page, and why SHA-based writes handle conflicting updates.
 
-The tests cannot replace this live demonstration. Record the actual outcome, including any known limitations, and confirm the video plays before committing it.
+The included recording shows saved source and synchronization history, but also earlier authentication errors. A fresh recording of the successful path with the current version would be clearer. The tests cannot replace live acceptance with the current build.
 
 ## Explain these without memorizing lines
 
@@ -46,7 +46,7 @@ The tests cannot replace this live demonstration. Record the actual outcome, inc
 
 ## Final handoff
 
-- Add `demo.mp4` and verify its README link on GitHub. Keep ordinary Git uploads under 100 MB, or document a hosted video/Git LFS alternative.
+- Root `demo.mp4` is included and compressed below GitHub's ordinary file limit. Verify the README link after pushing; the unchanged original is preserved outside this repository in `Desktop/Submission-originals/LeetSync`.
 - Verify `/api/health` reports `configured: true`, then complete the live acceptance procedure in [TESTING.md](TESTING.md).
 - Rotate any OAuth secret that was previously exposed in a screenshot or message. Redeploy after changing Vercel environment variables.
 - Keep `.env`, archives, dependencies, build output, and logs out of commits.

@@ -152,7 +152,9 @@ Remove-Item Env:LEETSYNC_OAUTH_SERVER_URL
 
 Load `dist` using **Load unpacked**, or unzip `leetsync-extension.zip` and load the extracted folder. Refresh existing LeetCode tabs after reloading the extension.
 
-The demonstration will be added as [`demo.mp4`](demo.mp4) in this repository's root. A live accepted-submission test and the recording remain required even when automated tests pass.
+Demonstration: [watch or download demo.mp4](demo.mp4). The recording includes repository selection, accepted submissions, synchronization history, and saved GitHub source. It was recorded with version 1.0.1; the current source is 1.0.3 and includes the later verdict and notification fixes. Some earlier authentication failures are visible before the successful flow.
+
+The video is compressed for an ordinary GitHub upload without changing its duration or resolution. The original remains outside the repository in `Desktop/Submission-originals/LeetSync`. Automated tests use mocked services; follow the manual acceptance checklist to verify a newly installed build against your own accounts.
 
 ## Known boundaries
 

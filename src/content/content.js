@@ -5,6 +5,7 @@ import { readAcceptedSubmission, readLatestSubmissionId, submissionIdFromUrl } f
 
 const handledSubmissions = new Set();
 let pendingSubmission;
+let contextInvalidated = false;
 
 document.addEventListener('click', (event) => {
   const button = event.target?.closest?.('button, [role="button"]');
@@ -40,6 +41,7 @@ document.addEventListener('keydown', (event) => {
 }, true);
 
 async function watchSubmission() {
+  if (contextInvalidated) return;
   const problemSlug = new URL(window.location.href).pathname.match(/^\/problems\/([a-z0-9-]+)/)?.[1];
   if (!problemSlug) return;
   const pending = {
@@ -50,15 +52,15 @@ async function watchSubmission() {
   try {
     const stored = await chrome.storage.local.get(STORAGE.settings);
     if (stored[STORAGE.settings]?.autoSync === false || pendingSubmission !== pending) return;
-    showToast('Waiting for your submission result...', 'info', pending.requestId);
+    showToast('Waiting for your submission result...', 'info', pending.requestId, undefined, true);
     setTimeout(() => void recoverSubmission(pending), 1000);
   } catch (error) {
-    showToast(error.message || 'Reload LeetSync and refresh this tab.', 'error', pending.requestId);
+    showExtensionError(error, pending.requestId);
   }
 }
 
 async function recoverSubmission(pending) {
-  if (pendingSubmission !== pending) return;
+  if (contextInvalidated || pendingSubmission !== pending) return;
   const location = new URL(window.location.href);
   if (location.pathname.split('/')[2] !== pending.problemSlug) return;
   if (Date.now() - pending.submittedAt >= 300_000) {
@@ -88,15 +90,15 @@ async function recoverSubmission(pending) {
     try {
       const payload = await readAcceptedSubmission({ ...pending, submissionId, cookie: document.cookie || '' });
       if (pendingSubmission !== pending) return;
-      if (payload?.pending) {
+      if (!payload || payload.pending) {
         setTimeout(() => void recoverSubmission(pending), 1000);
         return;
       }
       pendingSubmission = undefined;
-      if (payload) {
-        await synchronizeAcceptedSubmission(payload);
+      if (payload.rejected) {
+        showToast(`LeetCode verdict: ${payload.verdict}. Nothing was sent to GitHub.`, 'info', pending.requestId);
       } else {
-        showToast('Submission was not accepted — only accepted solutions are synced to GitHub.', 'info', pending.requestId);
+        await synchronizeAcceptedSubmission(payload);
       }
     } catch (error) {
       if (pendingSubmission !== pending) return;
@@ -121,6 +123,7 @@ window.addEventListener('message', (event) => {
 });
 
 async function synchronizeAcceptedSubmission(captured) {
+  if (contextInvalidated) return;
   const requestId = createRequestId();
 
   try {
@@ -146,6 +149,7 @@ async function synchronizeAcceptedSubmission(captured) {
       pendingSubmission = undefined;
     }
 
+    showToast('Accepted. Saving your solution to GitHub...', 'info', requestId, undefined, true);
     const response = await sendMessage({ type: MESSAGE.submissionAccepted, payload, requestId });
     if (response?.success) {
       showToast(response.message, response.type === 'SKIPPED_DUPLICATE' ? 'info' : 'success', response.requestId, response.url);
@@ -153,24 +157,43 @@ async function synchronizeAcceptedSubmission(captured) {
       showToast(response?.error || 'Synchronization failed.', 'error', response?.requestId || requestId);
     }
   } catch (error) {
-    if (/context invalidated|Extension context/i.test(error.message)) {
-      showToast('LeetSync was updated. Please refresh this page (F5) and submit again.', 'error', requestId);
-    } else {
-      showToast(error.message || 'Synchronization failed.', 'error', requestId);
-    }
+    showExtensionError(error, requestId);
   }
+}
+
+function showExtensionError(error, requestId) {
+  const message = error?.message || 'Synchronization failed.';
+  if (/extension context invalidated/i.test(message)) {
+    pendingSubmission = undefined;
+    if (contextInvalidated) return;
+    contextInvalidated = true;
+    showToast('LeetSync was reloaded. Refresh this LeetCode tab (F5), then submit again.', 'error', requestId);
+    return;
+  }
+  showToast(message, 'error', requestId);
 }
 
 function sendMessage(message) {
   return new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage(message, (response) => {
-      if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
-      else resolve(response);
-    });
+    const timeout = setTimeout(() => reject(new Error('LeetSync did not receive a GitHub result within two minutes. Check the popup history before retrying.')), 120_000);
+    try {
+      chrome.runtime.sendMessage(message, (response) => {
+        clearTimeout(timeout);
+        try {
+          if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+          else resolve(response);
+        } catch (error) {
+          reject(error);
+        }
+      });
+    } catch (error) {
+      clearTimeout(timeout);
+      reject(error);
+    }
   });
 }
 
-function showToast(message, type, requestId, url) {
+function showToast(message, type, requestId, url, persistent = false) {
   document.getElementById('leetsync-toast')?.remove();
   const toast = document.createElement('aside');
   toast.id = 'leetsync-toast';
@@ -201,5 +224,5 @@ function showToast(message, type, requestId, url) {
   toast.append(content, close);
   document.body.appendChild(toast);
   requestAnimationFrame(() => toast.classList.add('leetsync-toast--visible'));
-  setTimeout(() => toast.remove(), type === 'error' ? 9000 : 6000);
+  if (!persistent) setTimeout(() => toast.remove(), type === 'error' ? 9000 : 6000);
 }

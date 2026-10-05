@@ -4,7 +4,7 @@ import { normalizeLanguage } from './extractor.js';
 // https://github.com/arunbhardwaj/LeetHub-2.0/blob/main/scripts/leetcode/versions.js
 const QUERY = `query LeetSyncSubmission($submissionId: Int!, $titleSlug: String!) {
   submissionDetails(submissionId: $submissionId) {
-    code timestamp statusCode runtimeDisplay memoryDisplay
+    code timestamp runtimeDisplay memoryDisplay
     lang { name verboseName }
     question { title titleSlug content difficulty }
   }
@@ -26,8 +26,9 @@ export async function readLatestSubmissionId({ problemSlug, submittedAt, fetch: 
   const body = await response.json();
   const submissions = body.submissions_dump || body.submissions;
   if (!Array.isArray(submissions)) throw new Error('LeetCode did not return your submissions. Make sure you are signed in to LeetCode.');
+  const startedSecond = submissionStartedSecond(response, submittedAt);
   const recent = submissions.filter((entry) => /^\d+$/.test(String(entry.id)) &&
-    Number.isFinite(Number(entry.timestamp)) && Number(entry.timestamp) * 1000 >= submittedAt - 5000)
+    Number.isFinite(Number(entry.timestamp)) && Number(entry.timestamp) >= startedSecond)
     .sort((first, second) => Number(second.timestamp) - Number(first.timestamp) || Number(second.id) - Number(first.id));
   if (/pending|judging|queue|running/i.test(recent[0]?.status_display || '')) return '';
   return recent[0] ? String(recent[0].id) : '';
@@ -42,7 +43,7 @@ export async function readAcceptedSubmission({ submissionId, problemSlug, submit
   if (csrf) headers['x-csrftoken'] = csrf;
   const response = await request('https://leetcode.com/graphql/', {
     method: 'POST', credentials: 'same-origin', headers,
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(10_000), cache: 'no-store',
     body: JSON.stringify({
       operationName: 'LeetSyncSubmission', query: QUERY,
       variables: { submissionId: Number(submissionId), titleSlug: problemSlug },
@@ -54,14 +55,24 @@ export async function readAcceptedSubmission({ submissionId, problemSlug, submit
   if (body.errors?.length || !details) {
     throw new Error('LeetCode could not return the submitted solution. Make sure you are signed in to LeetCode.');
   }
-  if (details.statusCode == null || Number(details.statusCode) <= 0) return { pending: true };
-  // Match the bridge's accepted verdict; unknown final codes must not be synced.
-  if (Number(details.statusCode) !== 10 || details.question?.titleSlug !== problemSlug) {
+  if (details.question?.titleSlug !== problemSlug) return null;
+  const timestamp = Number(details.timestamp) * 1000;
+  if (!Number.isFinite(timestamp) || timestamp < submissionStartedSecond(response, submittedAt) * 1000) {
     return null;
   }
-  const timestamp = Number(details.timestamp) * 1000;
-  if (!Number.isFinite(timestamp) || timestamp < submittedAt - 60_000) {
-    return null;
+  const check = await request(`https://leetcode.com/submissions/detail/${submissionId}/check/`, {
+    credentials: 'same-origin', signal: AbortSignal.timeout(10_000), cache: 'no-store',
+  });
+  if (!check.ok) throw new Error(`LeetCode could not verify the submission verdict (HTTP ${check.status}). Sign in and refresh the LeetCode tab.`);
+  const verdict = await check.json();
+  if (verdict.submission_id != null && String(verdict.submission_id) !== String(submissionId)) {
+    throw new Error('LeetCode returned a verdict for a different submission.');
+  }
+  if (/^(pending|started|judging|queued|running)$/i.test(verdict.state || '')) return { pending: true };
+  const verdictName = typeof verdict.status_msg === 'string' ? verdict.status_msg.trim() : '';
+  if (verdict.state !== 'SUCCESS' || !verdictName) throw new Error('LeetCode returned an incomplete submission verdict.');
+  if (verdictName.toLowerCase() !== 'accepted') {
+    return { rejected: true, verdict: verdictName };
   }
   const language = normalizeLanguage(details.lang?.name || details.lang?.verboseName || '');
   if (!details.code?.trim() || !language) throw new Error('LeetCode did not return the full code or a supported language.');
@@ -73,4 +84,12 @@ export async function readAcceptedSubmission({ submissionId, problemSlug, submit
     description: details.question.content || '', difficulty: details.question.difficulty || '',
     url: `https://leetcode.com/problems/${problemSlug}/`, capturedAt: submittedAt,
   };
+}
+
+function submissionStartedSecond(response, submittedAt) {
+  const serverTime = Date.parse(response.headers.get('date') || '');
+  // Compare in LeetCode's clock; HTTP dates have only one-second precision.
+  return Number.isFinite(serverTime)
+    ? Math.floor((submittedAt + serverTime - Date.now()) / 1000) - 1
+    : Math.floor(submittedAt / 1000);
 }
